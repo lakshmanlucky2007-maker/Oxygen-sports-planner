@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../services/prisma');
+const db = require('../services/db');
 const jwt = require('jsonwebtoken');
 const { verifyFirebaseIdToken } = require('../services/firebase');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -34,6 +35,93 @@ function generateDefaultInitialsAvatar(name) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="24" fill="${color}"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-size="36" font-weight="bold">${initials}</text></svg>`;
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function normalizeUserRecord(userRecord) {
+  if (!userRecord) {
+    return null;
+  }
+
+  return {
+    id: userRecord.id,
+    email: userRecord.email,
+    name: userRecord.name,
+    avatar: userRecord.avatar,
+    role: userRecord.role || 'Parent',
+    provider: userRecord.provider || 'EMAIL'
+  };
+}
+
+async function findUserById(id) {
+  try {
+    return normalizeUserRecord(await prisma.user.findUnique({ where: { id } }));
+  } catch (err) {
+    console.warn('[auth] Prisma findUserById failed, falling back to raw DB:', err.message);
+    const result = await db.query(
+      `SELECT id, email, name, avatar, role, provider FROM users WHERE id = $1 LIMIT 1`,
+      [id]
+    );
+    return normalizeUserRecord(result.rows[0]);
+  }
+}
+
+async function findUserByEmail(email) {
+  try {
+    return normalizeUserRecord(await prisma.user.findUnique({ where: { email } }));
+  } catch (err) {
+    console.warn('[auth] Prisma findUserByEmail failed, falling back to raw DB:', err.message);
+    const result = await db.query(
+      `SELECT id, email, name, avatar, role, provider FROM users WHERE email = $1 LIMIT 1`,
+      [email]
+    );
+    return normalizeUserRecord(result.rows[0]);
+  }
+}
+
+async function updateUserRecord(id, data) {
+  try {
+    return normalizeUserRecord(
+      await prisma.user.update({
+        where: { id },
+        data
+      })
+    );
+  } catch (err) {
+    console.warn('[auth] Prisma updateUserRecord failed, falling back to raw DB:', err.message);
+    const fields = [];
+    const params = [];
+    let index = 1;
+
+    for (const [key, value] of Object.entries(data)) {
+      const column = key === 'createdAt' ? 'created_at' : key;
+      fields.push(`${column} = $${index++}`);
+      params.push(value);
+    }
+
+    params.push(id);
+
+    await db.query(
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${index}`,
+      params
+    );
+
+    return findUserById(id);
+  }
+}
+
+async function createUserRecord(data) {
+  try {
+    return normalizeUserRecord(await prisma.user.create({ data }));
+  } catch (err) {
+    console.warn('[auth] Prisma createUserRecord failed, falling back to raw DB:', err.message);
+    await db.query(
+      `INSERT INTO users (id, email, name, avatar, role, provider)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [data.id, data.email, data.name, data.avatar, data.role, data.provider]
+    );
+
+    return findUserById(data.id);
+  }
 }
 
 // POST /api/auth/login - Register or update user details upon Google Sign-In
@@ -70,16 +158,12 @@ router.post('/login', async (req, res, next) => {
     let userRecord = null;
 
     // Check if user exists by ID (Google UID) using Prisma
-    userRecord = await prisma.user.findUnique({
-      where: { id: uid }
-    });
+    userRecord = await findUserById(uid);
 
     if (!userRecord) {
       // Prevent duplicate accounts for the same email by checking by email first
       try {
-        userRecord = await prisma.user.findUnique({
-          where: { email: email }
-        });
+        userRecord = await findUserByEmail(email);
       } catch (err) {
         console.error("Prisma failed to check user by email:", err);
         return res.status(500).json({
@@ -95,13 +179,10 @@ router.post('/login', async (req, res, next) => {
         const isCustomAvatar = userRecord.avatar && userRecord.avatar.startsWith('data:');
         
         try {
-          userRecord = await prisma.user.update({
-            where: { id: userRecord.id },
-            data: {
-              name: name || userRecord.name,
-              ...(!isCustomAvatar && avatar ? { avatar } : {}),
-              provider: 'GOOGLE'
-            }
+          userRecord = await updateUserRecord(userRecord.id, {
+            name: name || userRecord.name,
+            ...(!isCustomAvatar && avatar ? { avatar } : {}),
+            provider: 'GOOGLE'
           });
         } catch (err) {
           console.error("Prisma failed to update existing user record:", err);
@@ -114,15 +195,13 @@ router.post('/login', async (req, res, next) => {
       } else {
         // Create new user using Prisma
         try {
-          userRecord = await prisma.user.create({
-            data: {
-              id: uid,
-              email: email,
-              name: name || '',
-              avatar: avatar,
-              role: role,
-              provider: 'GOOGLE'
-            }
+          userRecord = await createUserRecord({
+            id: uid,
+            email: email,
+            name: name || '',
+            avatar: avatar,
+            role: role,
+            provider: 'GOOGLE'
           });
         } catch (err) {
           console.error("Prisma failed to create user record:", err);
@@ -138,13 +217,10 @@ router.post('/login', async (req, res, next) => {
       const isCustomAvatar = userRecord.avatar && userRecord.avatar.startsWith('data:');
       
       try {
-        userRecord = await prisma.user.update({
-          where: { id: uid },
-          data: {
-            name: name || userRecord.name,
-            ...(!isCustomAvatar && avatar ? { avatar } : {}),
-            provider: 'GOOGLE'
-          }
+        userRecord = await updateUserRecord(uid, {
+          name: name || userRecord.name,
+          ...(!isCustomAvatar && avatar ? { avatar } : {}),
+          provider: 'GOOGLE'
         });
       } catch (err) {
         console.error("Prisma failed to update existing Google user record:", err);
