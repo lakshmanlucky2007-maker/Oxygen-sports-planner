@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const db = require('./services/db');
 const seeder = require('./services/seeder');
 
@@ -19,7 +20,7 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: '*', // Allow all origins for testing/deployment flexibility
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-admin-pin', 'Authorization']
 }));
 app.use(express.json());
@@ -36,6 +37,16 @@ app.use('/api/templates', authMiddleware, templatesRouter);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', database: db.isPostgres ? 'PostgreSQL' : 'SQLite' });
 });
+
+const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(frontendDistPath));
+
+  app.get(/^\/(?!api).*/, (req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 // Error handling middleware (should be registered last)
 app.use(errorHandler);

@@ -76,3 +76,29 @@ An AI-powered full-stack web application designed for **Oxygen Sports**, a leadi
 ## 🔑 Admin Access
 - Navigate to the **Admin Dashboard** tab.
 - Enter the default PIN: **`1526`** to unlock the charts and metrics.
+
+---
+
+## 🌐 Production Deployment
+
+- The repository root now supports deployment commands directly:
+  - `npm install`
+  - `npm run build`
+  - `npm start`
+- In production, the backend serves the built frontend from `frontend/dist`.
+- By default, the frontend now calls `/api` on the same host instead of `localhost`.
+
+### Environment Variables
+
+#### Backend
+- `PORT=5000`
+- `NODE_ENV=production`
+- `JWT_SECRET=your_secret_here`
+- `ADMIN_PIN=1526`
+- `OPENAI_API_KEY=your_openai_api_key_here`
+- `DATABASE_URL=postgresql://...` for PostgreSQL hosting, or leave unset to use local SQLite
+
+#### Frontend
+- `VITE_API_URL=/api`
+- If frontend and backend are deployed on different domains, set `VITE_API_URL` to the full backend URL, for example:
+  - `VITE_API_URL=https://your-backend-domain.com/api`

@@ -1,4 +1,15 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+function getApiBaseUrl() {
+  const configuredBaseUrl = import.meta.env.VITE_API_URL?.trim();
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/+$/, '');
+  }
+
+  // In production, default to same-origin so the deployed site does not call localhost.
+  return '/api';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Helper to standardise fetch calls
