@@ -53,67 +53,44 @@ function normalizeUserRecord(userRecord) {
 }
 
 async function findUserById(id) {
-  try {
-    return normalizeUserRecord(await prisma.user.findUnique({ where: { id } }));
-  } catch (err) {
-    console.warn('[auth] Prisma findUserById failed, falling back to raw DB:', err.message);
-    const result = await db.query(
-      `SELECT id, email, name, avatar, role, provider FROM users WHERE id = $1 LIMIT 1`,
-      [id]
-    );
-    return normalizeUserRecord(result.rows[0]);
-  }
+  const result = await db.query(
+    `SELECT id, email, name, avatar, role, provider FROM users WHERE id = $1 LIMIT 1`,
+    [id]
+  );
+  return normalizeUserRecord(result.rows[0]);
 }
 
 async function findUserByEmail(email) {
-  try {
-    return normalizeUserRecord(await prisma.user.findUnique({ where: { email } }));
-  } catch (err) {
-    console.warn('[auth] Prisma findUserByEmail failed, falling back to raw DB:', err.message);
-    const result = await db.query(
-      `SELECT id, email, name, avatar, role, provider FROM users WHERE email = $1 LIMIT 1`,
-      [email]
-    );
-    return normalizeUserRecord(result.rows[0]);
-  }
+  const result = await db.query(
+    `SELECT id, email, name, avatar, role, provider FROM users WHERE email = $1 LIMIT 1`,
+    [email]
+  );
+  return normalizeUserRecord(result.rows[0]);
 }
 
 async function updateUserRecord(id, data) {
-  try {
-    return normalizeUserRecord(
-      await prisma.user.update({
-        where: { id },
-        data
-      })
-    );
-  } catch (err) {
-    console.warn('[auth] Prisma updateUserRecord failed, falling back to raw DB:', err.message);
-    const fields = [];
-    const params = [];
-    let index = 1;
+  const fields = [];
+  const params = [];
+  let index = 1;
 
-    for (const [key, value] of Object.entries(data)) {
-      const column = key === 'createdAt' ? 'created_at' : key;
-      fields.push(`${column} = $${index++}`);
-      params.push(value);
-    }
-
-    params.push(id);
-
-    await db.query(
-      `UPDATE users SET ${fields.join(', ')} WHERE id = $${index}`,
-      params
-    );
-
-    return findUserById(id);
+  for (const [key, value] of Object.entries(data)) {
+    const column = key === 'createdAt' ? 'created_at' : key;
+    fields.push(`${column} = $${index++}`);
+    params.push(value);
   }
+
+  params.push(id);
+
+  await db.query(
+    `UPDATE users SET ${fields.join(', ')} WHERE id = $${index}`,
+    params
+  );
+
+  return findUserById(id);
 }
 
 async function createUserRecord(data) {
   try {
-    return normalizeUserRecord(await prisma.user.create({ data }));
-  } catch (err) {
-    console.warn('[auth] Prisma createUserRecord failed, falling back to raw DB:', err.message);
     const existingById = await findUserById(data.id);
     if (existingById) {
       return existingById;
@@ -136,6 +113,9 @@ async function createUserRecord(data) {
     );
 
     return findUserById(data.id);
+  } catch (err) {
+    console.warn('[auth] createUserRecord raw DB path failed:', err.message);
+    throw err;
   }
 }
 
@@ -288,10 +268,7 @@ router.put('/update-avatar', authMiddleware, async (req, res, next) => {
   }
 
   try {
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { avatar }
-    });
+    const updatedUser = await updateUserRecord(userId, { avatar });
 
     res.json({
       success: true,
@@ -318,10 +295,7 @@ const handleUpdateRole = async (req, res, next) => {
   }
 
   try {
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { role: targetMode }
-    });
+    const updatedUser = await updateUserRecord(userId, { role: targetMode });
 
     console.log(`[update-role] Updated user ${userId} planner mode to ${targetMode}`);
 
