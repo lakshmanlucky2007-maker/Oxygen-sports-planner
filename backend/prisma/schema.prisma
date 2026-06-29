@@ -1,0 +1,80 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:../database.sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  name      String?
+  avatar    String?
+  role      String   @default("Parent")
+  provider  String   @default("EMAIL")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  generations Generation[]
+
+  @@map("users")
+}
+
+model Generation {
+  id               String   @id
+  sport            String
+  age              Int
+  height           Float?
+  heightUnit       String   @default("cm") @map("height_unit")
+  playerLevel      String?  @map("player_level")
+  currentEquipment String   @map("current_equipment")
+  budgetMin        Int?     @map("budget_min")
+  budgetMax        Int?     @map("budget_max")
+  goals            String?
+  coachName        String?  @map("coach_name")
+  promptVersion    String?  @map("prompt_version")
+  aiResponse       String?  @map("ai_response")
+  responseTimeMs   Int?     @map("response_time_ms")
+  createdAt        DateTime @default(now()) @map("created_at")
+  isDeleted        Int      @default(0) @map("is_deleted")
+  planningMode     String   @default("Parent") @map("planning_mode")
+  playerWeight     Float?   @map("player_weight")
+  playerExperience String?  @map("player_experience")
+  userId           String?  @map("user_id")
+  playerName       String?  @map("player_name")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("generations")
+}
+
+model Feedback {
+  id           Int      @id @default(autoincrement())
+  generationId String   @map("generation_id")
+  rating       Int
+  thumbs       String?
+  comment      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("feedback")
+}
+
+model Template {
+  id               String  @id
+  label            String?
+  emoji            String?
+  color            String?
+  sport            String?
+  age              Int?
+  height           Float?
+  heightUnit       String  @default("cm") @map("height_unit")
+  playerLevel      String? @map("player_level")
+  currentEquipment String? @map("current_equipment")
+  budgetMin        Int?    @map("budget_min")
+  budgetMax        Int?    @map("budget_max")
+  goals            String?
+  isActive         Int     @default(1) @map("is_active")
+
+  @@map("templates")
+}

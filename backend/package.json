@@ -1,0 +1,28 @@
+{
+  "name": "oxygen-sports-planner-backend",
+  "version": "1.0.0",
+  "description": "Backend for Oxygen Sports AI Player Age-based Equipment Growth Planner",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node src/app.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.18.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^14.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "openai": "^4.52.0",
+    "pg": "^8.12.0",
+    "sqlite3": "^5.1.7",
+    "uuid": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0"
+  }
+}
