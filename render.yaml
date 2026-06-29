@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: oxygen-sports-planner-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_PIN
+        value: 1526
+      - key: FIREBASE_PROJECT_ID
+        value: growth-gear-ai
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

@@ -102,3 +102,27 @@ An AI-powered full-stack web application designed for **Oxygen Sports**, a leadi
 - `VITE_API_URL=/api`
 - If frontend and backend are deployed on different domains, set `VITE_API_URL` to the full backend URL, for example:
   - `VITE_API_URL=https://your-backend-domain.com/api`
+
+### Recommended Setup: Vercel + Render
+
+#### Render API
+- Create a new Render Web Service from this repository.
+- Render can read the included `render.yaml` blueprint automatically.
+- If you configure manually, use:
+  - Root Directory: `backend`
+  - Build Command: `npm install`
+  - Start Command: `npm start`
+- Add these environment variables in Render:
+  - `NODE_ENV=production`
+  - `PORT=10000`
+  - `JWT_SECRET=your_secret_here`
+  - `ADMIN_PIN=1526`
+  - `FIREBASE_PROJECT_ID=growth-gear-ai`
+  - `FIREBASE_API_KEY=your_firebase_web_api_key_here`
+  - `OPENAI_API_KEY=your_openai_api_key_here`
+
+#### Vercel Frontend
+- Import the same GitHub repository into Vercel.
+- The included `vercel.json` builds the Vite frontend and rewrites all routes to `index.html` for React Router.
+- Set this environment variable in Vercel:
+  - `VITE_API_URL=https://your-render-service.onrender.com/api`
