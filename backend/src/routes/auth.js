@@ -69,6 +69,7 @@ async function findUserByEmail(email) {
 }
 
 async function updateUserRecord(id, data) {
+  const existingUser = await findUserById(id);
   const fields = [];
   const params = [];
   let index = 1;
@@ -86,7 +87,15 @@ async function updateUserRecord(id, data) {
     params
   );
 
-  return findUserById(id);
+  const refreshedUser = await findUserById(id);
+  if (refreshedUser) {
+    return refreshedUser;
+  }
+
+  return normalizeUserRecord({
+    ...(existingUser || { id }),
+    ...data
+  });
 }
 
 async function createUserRecord(data) {
