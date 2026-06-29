@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
 const db = require('./services/db');
 const seeder = require('./services/seeder');
@@ -39,13 +40,16 @@ app.get('/api/health', (req, res) => {
 });
 
 const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+const frontendIndexPath = path.join(frontendDistPath, 'index.html');
 
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendIndexPath)) {
   app.use(express.static(frontendDistPath));
 
   app.get(/^\/(?!api).*/, (req, res) => {
-    res.sendFile(path.join(frontendDistPath, 'index.html'));
+    res.sendFile(frontendIndexPath);
   });
+} else if (process.env.NODE_ENV === 'production') {
+  console.log('Frontend build not found; serving API only in production.');
 }
 
 // Error handling middleware (should be registered last)

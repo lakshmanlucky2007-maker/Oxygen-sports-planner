@@ -114,6 +114,21 @@ async function createUserRecord(data) {
     return normalizeUserRecord(await prisma.user.create({ data }));
   } catch (err) {
     console.warn('[auth] Prisma createUserRecord failed, falling back to raw DB:', err.message);
+    const existingById = await findUserById(data.id);
+    if (existingById) {
+      return existingById;
+    }
+
+    const existingByEmail = await findUserByEmail(data.email);
+    if (existingByEmail) {
+      return updateUserRecord(existingByEmail.id, {
+        name: data.name || existingByEmail.name,
+        avatar: data.avatar || existingByEmail.avatar,
+        role: existingByEmail.role || data.role || 'Parent',
+        provider: data.provider || 'GOOGLE'
+      });
+    }
+
     await db.query(
       `INSERT INTO users (id, email, name, avatar, role, provider)
        VALUES ($1, $2, $3, $4, $5, $6)`,
